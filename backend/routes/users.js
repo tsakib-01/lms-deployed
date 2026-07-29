@@ -3,10 +3,11 @@ const router = express.Router();
 const userController = require('../controllers/users');
 const { protect, authorize } = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
+const avatarUpload = upload.avatarUpload || upload;
 
 // ── User routes ──────────────────────────────────────────────────────────────
 router.get('/me', protect, userController.getMe);
-router.put('/me', protect, upload.single('avatar'), userController.updateProfile); // ✅ only one, with upload
+router.put('/me', protect, avatarUpload.single('avatar'), userController.updateProfile); // ✅ use avatarUpload
 
 router.get('/dashboard', protect, userController.getDashboard);
 router.get('/admin/users', protect, authorize('Admin'), userController.getAdminUsers);

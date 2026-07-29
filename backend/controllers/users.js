@@ -25,8 +25,8 @@ exports.updateProfile = async (req, res) => {
     if (bio)  user.bio  = bio;
 
     if (req.file) {
-      // ✅ store a consistent path
-      user.avatar = `/uploads/avatars/${req.file.filename}`; 
+      // If Cloudinary URL is provided, store full secure URL. Otherwise store local path.
+      user.avatar = req.file.path || req.file.secure_url || `/uploads/avatars/${req.file.filename}`; 
     }
 
     await user.save();

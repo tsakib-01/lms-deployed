@@ -52,11 +52,10 @@ const assignmentStorage = new CloudinaryStorage({
 
 // ── File filters ────────────────────────────────────────────────────
 const imageFilter = (req, file, cb) => {
-  const allowed = /jpg|jpeg|png|webp/;
-  if (allowed.test(file.mimetype.split('/')[1])) {
+  if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error('Only image files (jpg, jpeg, png, webp) are allowed'), false);
+    cb(new Error('Only image files (jpg, jpeg, png, webp, gif) are allowed'), false);
   }
 };
 

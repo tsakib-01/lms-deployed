@@ -25,22 +25,23 @@ exports.updateProfile = async (req, res) => {
     if (bio)  user.bio  = bio;
 
     if (req.file) {
+      console.log('📸 Uploading file:', req.file.originalname, req.file.mimetype, req.file.size);
       if (req.file.path || req.file.secure_url) {
         user.avatar = req.file.path || req.file.secure_url;
       } else if (req.file.buffer) {
         const mime = req.file.mimetype || 'image/png';
         const b64 = req.file.buffer.toString('base64');
         user.avatar = `data:${mime};base64,${b64}`;
-      } else {
+      } else if (req.file.filename) {
         user.avatar = `/uploads/avatars/${req.file.filename}`;
       }
+      console.log('✅ Updated avatar string length:', user.avatar ? user.avatar.length : 0);
     }
 
     await user.save();
 
     const updated = await User.findById(user._id).select('-password');
 
-    // ✅ Return a flat, predictable shape that matches what AuthContext stores
     res.json({
       success: true,
       user: {
@@ -54,6 +55,7 @@ exports.updateProfile = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('❌ updateProfile Error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

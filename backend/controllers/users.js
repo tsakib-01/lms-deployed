@@ -17,30 +17,34 @@ exports.getMe = async (req, res) => {
 exports.updateProfile = async (req, res) => {
   try {
     const { name, bio } = req.body;
-    const user = await User.findById(req.user._id);
+    const updateData = {};
 
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    if (name) user.name = name;
-    if (bio)  user.bio  = bio;
+    if (name) updateData.name = name;
+    if (bio !== undefined) updateData.bio = bio;
 
     if (req.file) {
       console.log('📸 Uploading file:', req.file.originalname, req.file.mimetype, req.file.size);
       if (req.file.path || req.file.secure_url) {
-        user.avatar = req.file.path || req.file.secure_url;
+        updateData.avatar = req.file.path || req.file.secure_url;
       } else if (req.file.buffer) {
         const mime = req.file.mimetype || 'image/png';
         const b64 = req.file.buffer.toString('base64');
-        user.avatar = `data:${mime};base64,${b64}`;
+        updateData.avatar = `data:${mime};base64,${b64}`;
       } else if (req.file.filename) {
-        user.avatar = `/uploads/avatars/${req.file.filename}`;
+        updateData.avatar = `/uploads/avatars/${req.file.filename}`;
       }
-      console.log('✅ Updated avatar string length:', user.avatar ? user.avatar.length : 0);
+      console.log('✅ Prepared avatar string length:', updateData.avatar ? updateData.avatar.length : 0);
     }
 
-    await user.save();
+    const updated = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateData },
+      { new: true, runValidators: false }
+    ).select('-password');
 
-    const updated = await User.findById(user._id).select('-password');
+    if (!updated) return res.status(404).json({ message: 'User not found' });
+
+    console.log('🎉 MongoDB Profile Updated:', updated._id, 'Avatar exists:', !!updated.avatar);
 
     res.json({
       success: true,

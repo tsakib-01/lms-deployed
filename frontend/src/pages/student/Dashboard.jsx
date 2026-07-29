@@ -863,18 +863,13 @@ const AssignmentModal = ({ assignment, onClose, onDeleted, onUpdated }) => {
     const f = e.target.files[0];
     if (!f) return;
 
-    if (f.size > 3 * 1024 * 1024) {
-      alert('⚠️ File size is too large. Please select an image under 3MB.');
+    if (f.size > 5 * 1024 * 1024) {
+      alert('⚠️ File size is too large. Please select an image under 5MB.');
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result;
-      setAvatar(base64String);
-      setPreview(base64String);
-    };
-    reader.readAsDataURL(f);
+    setAvatar(f); // Store raw File object for Cloudinary upload
+    setPreview(URL.createObjectURL(f)); // Instant preview
   };
 
   const handleSave = async () => {

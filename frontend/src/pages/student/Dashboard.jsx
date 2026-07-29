@@ -897,16 +897,43 @@ const SettingsModal = ({ user, onClose, onUpdated }) => {
 
 
 
-  const handleAvatarChange = (e) => {
-
+  const handleAvatarChange = async (e) => {
     const f = e.target.files[0];
-
     if (!f) return;
 
     setAvatar(f);
-
     setPreview(URL.createObjectURL(f));
+    setLoading(true);
 
+    try {
+      alert('📤 Uploading your picture...');
+      const fd = new FormData();
+      fd.append('name', name || user?.name || 'Student');
+      fd.append('avatar', f);
+
+      const res = await fetch(`${API}/api/users/me`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const existingUser = JSON.parse(localStorage.getItem('user') || '{}');
+        const mergedUser = { ...existingUser, ...data.user };
+        localStorage.setItem('user', JSON.stringify(mergedUser));
+        if (data.user?.avatar) setPreview(getImageSrc(data.user.avatar));
+        onUpdated(mergedUser);
+        alert('✅ Profile picture saved successfully!');
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        alert(`❌ Upload Error (${res.status}): ${errData.message || errData.error || 'Failed to upload image'}`);
+      }
+    } catch (err) {
+      alert(`❌ Network error during upload: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
 
@@ -980,12 +1007,9 @@ const SettingsModal = ({ user, onClose, onUpdated }) => {
 
               </div>
 
-              <button onClick={() => fileRef.current.click()}
-
+              <button type="button" onClick={() => fileRef.current?.click()}
                 className="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow hover:bg-blue-700 transition text-sm">
-
                 ✎
-
               </button>
 
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />

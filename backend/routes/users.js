@@ -5,9 +5,17 @@ const { protect, authorize } = require('../middlewares/auth');
 const upload = require('../middlewares/upload');
 const avatarUpload = upload.avatarUpload || upload;
 
+// Middleware that handles both FormData (Multer file upload) AND raw JSON (Base64 avatar upload)
+const handleAvatarUpload = (req, res, next) => {
+  if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+    return next(); // JSON payload containing Base64 avatar — skip multer!
+  }
+  avatarUpload.single('avatar')(req, res, next);
+};
+
 // ── User routes ──────────────────────────────────────────────────────────────
 router.get('/me', protect, userController.getMe);
-router.put('/me', protect, avatarUpload.single('avatar'), userController.updateProfile); // ✅ use avatarUpload
+router.put('/me', protect, handleAvatarUpload, userController.updateProfile);
 
 router.get('/dashboard', protect, userController.getDashboard);
 router.get('/admin/users', protect, authorize('Admin'), userController.getAdminUsers);

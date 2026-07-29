@@ -877,28 +877,30 @@ const AssignmentModal = ({ assignment, onClose, onDeleted, onUpdated }) => {
     setLoading(true);
 
     try {
-      let res;
-      if (typeof avatar === 'string' && avatar.startsWith('data:')) {
-        // Send directly as JSON Base64 string for 100% serverless guarantee
-        res = await fetch(`${API}/api/users/me`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`
-          },
-          body: JSON.stringify({ name, avatar }),
-        });
-      } else {
-        const fd = new FormData();
-        fd.append('name', name);
-        if (avatar && typeof avatar !== 'string') fd.append('avatar', avatar);
+      const fd = new FormData();
+      fd.append('name', name);
 
-        res = await fetch(`${API}/api/users/me`, {
-          method: 'PUT',
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        });
+      if (avatar) {
+        if (typeof avatar === 'string') {
+          fd.append('avatar', avatar);
+        } else {
+          fd.append('avatar', avatar);
+          // Also convert to Base64 string as fallback field
+          const reader = new FileReader();
+          const base64Promise = new Promise((resolve) => {
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(avatar);
+          });
+          const b64 = await base64Promise;
+          fd.append('avatarBase64', b64);
+        }
       }
+
+      const res = await fetch(`${API}/api/users/me`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
 
       if (res.ok) {
         const data = await res.json();

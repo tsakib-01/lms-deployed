@@ -36,6 +36,8 @@ exports.updateProfile = async (req, res) => {
       console.log('✅ Prepared avatar string length:', updateData.avatar ? updateData.avatar.length : 0);
     } else if (req.body.avatar) {
       updateData.avatar = req.body.avatar;
+    } else if (req.body.avatarBase64) {
+      updateData.avatar = req.body.avatarBase64;
     }
 
     const updated = await User.findByIdAndUpdate(

@@ -238,12 +238,27 @@ exports.createCourse = async (req, res) => {
   try {
     const { title, description, category, price } = req.body;
 
+    let thumbnail = null;
+    if (req.file) {
+      if (req.file.path || req.file.secure_url) {
+        thumbnail = req.file.path || req.file.secure_url;
+      } else if (req.file.buffer) {
+        const mime = req.file.mimetype || 'image/png';
+        const b64 = req.file.buffer.toString('base64');
+        thumbnail = `data:${mime};base64,${b64}`;
+      } else if (req.file.filename) {
+        thumbnail = `/uploads/thumbnails/${req.file.filename}`;
+      }
+    } else if (req.body.thumbnail) {
+      thumbnail = req.body.thumbnail;
+    }
+
     const parsedPrice = parseFloat(price) || 0;
     const course = await Course.create({
       title,
       description,
       category,
-      thumbnail: req.file ? req.file.path : null, // ✅ Cloudinary URL from Multer
+      thumbnail,
       price: parsedPrice,
       isPaid: parsedPrice > 0,
       instructor: req.user._id,

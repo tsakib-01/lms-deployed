@@ -131,13 +131,28 @@ router.get('/logo', async (_req, res) => {
 });
 
 // POST /api/content/logo
-router.post('/logo', uploadLogo.single('logo'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, message: 'No file uploaded' });
+router.post('/logo', (req, res, next) => {
+  uploadLogo.single('logo')(req, res, (err) => {
+    if (err) {
+      console.warn('⚠️ Multer logo error:', err.message);
     }
-    const logoUrl  = req.file.path;
-    const publicId = req.file.filename;
+    next();
+  });
+}, async (req, res) => {
+  try {
+    let logoUrl = null;
+    let publicId = null;
+
+    if (req.file) {
+      logoUrl  = req.file.path || req.file.secure_url;
+      publicId = req.file.filename;
+    } else if (req.body.logoBase64 || req.body.logo) {
+      logoUrl = req.body.logoBase64 || req.body.logo;
+    }
+
+    if (!logoUrl) {
+      return res.status(400).json({ success: false, message: 'No image file or logo data received' });
+    }
 
     await SiteSettings.findOneAndUpdate(
       {},
@@ -145,7 +160,7 @@ router.post('/logo', uploadLogo.single('logo'), async (req, res) => {
       { upsert: true, new: true }
     );
 
-    console.log('✅ Logo saved to MongoDB + Cloudinary:', logoUrl);
+    console.log('✅ Logo saved to MongoDB:', logoUrl.substring(0, 40) + '...');
     res.json({ success: true, logoUrl, message: 'Logo updated successfully' });
   } catch (err) {
     console.error('Logo upload error:', err);

@@ -3,8 +3,7 @@ const express = require('express');
 const router = express.Router();
 const teacherController = require('../controllers/teacher');
 const { protect, authorize } = require('../middlewares/auth');
-const { assignmentUpload } = require('../middlewares/upload'); // ← Use document upload here
-const { thumbnailUpload } = require('../utils/upload');
+const { assignmentUpload, thumbnailUpload } = require('../middlewares/upload');
 
 // const { thumbnailUpload } = require('../utils/upload');
 // Apply authentication and teacher authorization to all routes

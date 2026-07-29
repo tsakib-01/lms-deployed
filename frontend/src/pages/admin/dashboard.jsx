@@ -367,48 +367,44 @@ const Dashboard = () => {
   };
 
   const handleLogoUpload = async () => {
+    if (!logoFile) return;
 
-  if (!logoFile) return;
+    setLogoLoading(true);
 
-  setLogoLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('logo', logoFile);
 
-  try {
+      // Convert to Base64 data URI string as fallback
+      const reader = new FileReader();
+      const base64Promise = new Promise((resolve) => {
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(logoFile);
+      });
+      const b64 = await base64Promise;
+      fd.append('logoBase64', b64);
 
-    const fd = new FormData();
+      const token = localStorage.getItem('token');
 
-    fd.append('logo', logoFile);
+      const res   = await fetch(`${API}/api/content/logo`, {
+        method:  'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body:    fd
+      });
 
-    const token = localStorage.getItem('token');
+      const data = await res.json();
 
-    const res   = await fetch(`${API}/api/content/logo`, {
+      if (data.success) {
+        setLogoUrl(data.logoUrl);
+        setLogoPreview(data.logoUrl);
+        setLogoFile(null);
+        notify('success', 'Logo updated successfully!');
+      } else { notify('error', data.message || 'Failed to upload logo'); }
 
-      method:  'POST',
+    } catch (err) { notify('error', 'Failed to upload logo: ' + err.message); }
 
-      headers: { Authorization: `Bearer ${token}` },
-
-      body:    fd
-
-    });
-
-    const data = await res.json();
-
-    if (data.success) {
-
-      setLogoUrl(data.logoUrl);   // store Cloudinary URL
-
-      setLogoPreview(data.logoUrl);
-
-      setLogoFile(null);
-
-      notify('success', 'Logo updated successfully!');
-
-    } else { notify('error', data.message || 'Failed to upload logo'); }
-
-  } catch (_) { notify('error', 'Failed to upload logo'); }
-
-  finally { setLogoLoading(false); }
-
-};
+    finally { setLogoLoading(false); }
+  };
 
 const handleLogoRemove = async () => {
 

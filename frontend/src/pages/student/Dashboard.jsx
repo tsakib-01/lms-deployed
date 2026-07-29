@@ -1580,18 +1580,37 @@ const Dashboard = () => {
 
 
 
-        {/* Header */}
-
-        <div className="mb-8">
-
-          <h1 className="text-3xl font-bold text-gray-900">
-
-            Welcome back, <span className="text-blue-600">{user?.name?.split(' ')[0] || 'Student'}</span> 👋
-
-          </h1>
-
-          <p className="text-gray-400 mt-1 text-sm">Here's what's happening with your learning.</p>
-
+        {/* Header with Profile Picture Upload */}
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center gap-5">
+            <div 
+              onClick={() => setShowSettings(true)}
+              className="relative group cursor-pointer w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden shadow-md border-2 border-white ring-2 ring-blue-500/20 transition-all hover:scale-105"
+              title="Click to change profile picture"
+            >
+              {user?.avatar ? (
+                <img src={getImageSrc(user.avatar)} alt="avatar" className="w-full h-full object-cover" />
+              ) : (
+                user?.name?.charAt(0) || 'S'
+              )}
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-white text-xs font-semibold">📷 Edit</span>
+              </div>
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Welcome back, <span className="text-blue-600">{user?.name?.split(' ')[0] || 'Student'}</span> 👋
+              </h1>
+              <p className="text-gray-500 mt-0.5 text-sm">Here's what's happening with your learning.</p>
+            </div>
+          </div>
+          
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold text-sm rounded-xl transition"
+          >
+            <span>⚙️</span> Edit Profile & Avatar
+          </button>
         </div>
 
 

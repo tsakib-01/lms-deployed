@@ -58,24 +58,41 @@ const CreateCourse = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.title || !formData.description || !formData.category) {
+      alert('Please fill in all required fields (Title, Description, Category)');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const token = localStorage.getItem('token');
+      let thumbnailBase64 = null;
 
-      // Use FormData to support file upload
-      const payload = new FormData();
-      payload.append('title', formData.title);
-      payload.append('description', formData.description);
-      payload.append('category', formData.category);
-      payload.append('price', formData.price);
-      if (thumbnailFile) payload.append('thumbnail', thumbnailFile);
+      if (thumbnailFile) {
+        const reader = new FileReader();
+        const b64Promise = new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(thumbnailFile);
+        });
+        thumbnailBase64 = await b64Promise;
+      }
+
+      const payload = {
+        title: formData.title,
+        description: formData.description,
+        category: formData.category,
+        price: formData.price,
+        thumbnail: thumbnailBase64
+      };
 
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/teacher/courses`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        // Do NOT set Content-Type — browser sets it automatically with boundary for FormData
-        body: payload
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
       });
 
       if (response.ok) {

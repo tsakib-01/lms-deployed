@@ -90,7 +90,8 @@ router.post('/create-teacher', async (req, res) => {
       inviteExpires
     });
 
-    const inviteLink = `${process.env.FRONTEND_URL}/set-password/${inviteToken}`;
+    const frontendOrigin = process.env.FRONTEND_URL || req.headers.origin || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const inviteLink = `${frontendOrigin}/#/set-password/${inviteToken}`;
 
     let emailSent = false;
     try {

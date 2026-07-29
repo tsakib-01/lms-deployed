@@ -53,22 +53,19 @@ const protect = async (req, res, next) => {
 
 const authorize = (...roles) => {
   return (req, res, next) => {
-    console.log('🔒 Checking role authorization...');
-    console.log('User role:', req.user?.role);
-    console.log('Required roles:', roles);
-    
     if (!req.user) {
-      return res.status(401).json({ message: 'User not authenticated' });
+      return res.status(401).json({ message: 'Not authorized, no user found' });
     }
-    
-    if (!roles.includes(req.user.role)) {
-      console.log('❌ Role authorization failed');
-      return res.status(403).json({ 
-        message: `Not authorized for this role. Required: ${roles.join(' or ')}` 
+
+    const userRole = req.user.role ? req.user.role.toLowerCase() : '';
+    const allowed = roles.some(r => r.toLowerCase() === userRole);
+
+    if (!allowed) {
+      return res.status(403).json({
+        message: `User role '${req.user.role}' is not authorized to access this route`
       });
     }
-    
-    console.log('✅ Role authorization passed');
+
     next();
   };
 };

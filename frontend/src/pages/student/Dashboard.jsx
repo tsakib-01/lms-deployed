@@ -14,16 +14,11 @@ const API = import.meta.env.VITE_BACKEND_URL;
 
 
 
-// Handles both Cloudinary full URLs and legacy local paths
-
+// Handles Cloudinary URLs, Base64 Data URIs, and legacy local paths
 const getImageSrc = (path) => {
-
   if (!path) return null;
-
-  if (path.startsWith('http')) return path;   // Cloudinary URL — use as-is
-
+  if (path.startsWith('http') || path.startsWith('data:')) return path;   // Cloudinary / Base64 Data URI — use as-is
   return `${API}${path}`;                     // local path — prepend API base
-
 };
 
 

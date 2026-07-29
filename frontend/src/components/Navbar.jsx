@@ -68,10 +68,14 @@ const Navbar = () => {
     const base = `${dim} rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0`;
     const cls  = clickable ? `${base} cursor-pointer ring-2 ring-transparent hover:ring-orange-400 transition` : base;
 
+    const avatarSrc = user?.avatar 
+      ? (user.avatar.startsWith('http') || user.avatar.startsWith('data:') ? user.avatar : `${API}${user.avatar}`)
+      : null;
+
     const content = (
       <>
-        {user?.avatar
-          ? <img src={`${API}${user.avatar}`} alt="avatar" className="w-full h-full object-cover" onError={e => { e.target.style.display = "none"; }} />
+        {avatarSrc
+          ? <img src={avatarSrc} alt="avatar" className="w-full h-full object-cover" onError={e => { e.target.style.display = "none"; }} />
           : user?.name?.charAt(0)?.toUpperCase() || "U"}
       </>
     );

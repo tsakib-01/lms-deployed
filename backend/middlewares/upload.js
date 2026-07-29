@@ -3,32 +3,39 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
 
-// ── Configure Cloudinary ────────────────────────────────────────────
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+// ── Configure Cloudinary if credentials exist ────────────────────────
+const hasCloudinary = process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET;
 
-// ── Storage: Thumbnails (course cover images) ───────────────────────
-const thumbnailStorage = new CloudinaryStorage({
+if (hasCloudinary) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key:    process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
+// Memory storage for fallback (converts upload to Base64 Data URI on Vercel without Cloudinary)
+const memoryStorage = multer.memoryStorage();
+
+// ── Storage: Thumbnails ───────────────────────
+const thumbnailStorage = hasCloudinary ? new CloudinaryStorage({
   cloudinary,
   params: {
     folder:           'lms/thumbnails',
     allowed_formats:  ['jpg', 'jpeg', 'png', 'webp'],
     transformation:   [{ width: 800, height: 450, crop: 'fill' }],
   },
-});
+}) : memoryStorage;
 
-// ── Storage: Avatars (user profile pictures) ────────────────────────
-const avatarStorage = new CloudinaryStorage({
+// ── Storage: Avatars ────────────────────────
+const avatarStorage = hasCloudinary ? new CloudinaryStorage({
   cloudinary,
   params: {
     folder:          'lms/avatars',
     allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
     transformation:  [{ width: 200, height: 200, crop: 'fill' }],
   },
-});
+}) : memoryStorage;
 
 // ── Storage: Assignments (PDFs, docs, etc.) ─────────────────────────
 const assignmentStorage = new CloudinaryStorage({

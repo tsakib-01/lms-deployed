@@ -22,12 +22,20 @@ router.get('/courses', teacherController.getCourses);
 // router.post('/courses', upload.single('thumbnail'), teacherController.createCourse);
 router.get('/courses/:id', teacherController.getCourse);
 
-// router.put('/courses/:id', upload.single('thumbnail'), teacherController.updateCourse);
-router.put('/courses/:id', thumbnailUpload.single('thumbnail'), teacherController.updateCourse)
-router.post('/courses', thumbnailUpload.single('thumbnail'), teacherController.createCourse);
+const handleThumbnailUpload = (req, res, next) => {
+  if (req.headers['content-type'] && req.headers['content-type'].includes('application/json')) {
+    return next();
+  }
+  thumbnailUpload.single('thumbnail')(req, res, (err) => {
+    if (err) {
+      console.warn('⚠️ Thumbnail upload warning:', err.message);
+    }
+    next();
+  });
+};
 
-
-router.put('/courses/:id', thumbnailUpload.single('thumbnail'), teacherController.updateCourse);
+router.put('/courses/:id', handleThumbnailUpload, teacherController.updateCourse);
+router.post('/courses', handleThumbnailUpload, teacherController.createCourse);
 router.delete('/courses/:id', teacherController.deleteCourse);
 router.patch('/courses/:id/publish', teacherController.togglePublish);
 

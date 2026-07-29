@@ -80,15 +80,15 @@ const CreateCourse = () => {
 
       if (response.ok) {
         const data = await response.json();
-        alert('Course created successfully!');
+        alert('✅ Course created successfully!');
         navigate(`/teacher/courses/${data.course._id}/edit`);
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to create course');
+        const error = await response.json().catch(() => ({}));
+        alert(`❌ Error (${response.status}): ${error.message || error.error || 'Failed to create course'}`);
       }
     } catch (error) {
       console.error('Fetch error:', error);
-      alert('Server error. Please try again.');
+      alert(`❌ Network error: ${error.message}`);
     } finally {
       setLoading(false);
     }

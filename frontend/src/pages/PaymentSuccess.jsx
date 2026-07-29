@@ -21,7 +21,7 @@ const PaymentSuccess = () => {
           return;
         }
 
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/verify-session?session_id=${sessionId}`, {
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/payments/verify-session?session_id=${sessionId}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

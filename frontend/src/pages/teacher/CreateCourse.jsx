@@ -71,7 +71,7 @@ const CreateCourse = () => {
       payload.append('price', formData.price);
       if (thumbnailFile) payload.append('thumbnail', thumbnailFile);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/teacher/courses`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/teacher/courses`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         // Do NOT set Content-Type — browser sets it automatically with boundary for FormData
@@ -81,7 +81,7 @@ const CreateCourse = () => {
       if (response.ok) {
         const data = await response.json();
         alert('Course created successfully!');
-        navigate('/teacher/dashboard');
+        navigate(`/teacher/courses/${data.course._id}/edit`);
       } else {
         const error = await response.json();
         alert(error.message || 'Failed to create course');

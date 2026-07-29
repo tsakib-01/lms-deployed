@@ -1,4 +1,4 @@
-const API_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/contact`;
+const API_URL = `${import.meta.env.VITE_BACKEND_URL}/api/contact`;
 
 export const submitContactForm = async (formData) => {
   const response = await fetch(`${API_URL}/submit`, {

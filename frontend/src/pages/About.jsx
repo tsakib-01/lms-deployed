@@ -60,7 +60,7 @@ const About = () => {
   useEffect(() => {
     const fetchAboutContent = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/content/pages/about`);
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/content/pages/about`);
         const data = await response.json();
         
         if (data.success) {

@@ -88,7 +88,7 @@ const AssignmentSubmission = ({ assignment, onClose }) => {
   const [saving, setSaving] = useState(false);
 
   const token = localStorage.getItem('token');
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const API_URL = import.meta.env.VITE_BACKEND_URL;
 
   const getFileSrc = (path) => {
     if (!path) return '';

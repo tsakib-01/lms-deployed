@@ -240,48 +240,7 @@ export const getStudentProgress = async (studentId) => {
   }
 };
 
-// ========================================
-// ANNOUNCEMENTS
-// ========================================
-export const getAnnouncements = async () => {
-  try {
-    const response = await api.get('/teacher/announcements');
-    return response;
-  } catch (error) {
-    console.error('Error fetching announcements:', error);
-    throw error;
-  }
-};
 
-export const createAnnouncement = async (announcementData) => {
-  try {
-    const response = await api.post('/teacher/announcements', announcementData);
-    return response;
-  } catch (error) {
-    console.error('Error creating announcement:', error);
-    throw error;
-  }
-};
-
-export const updateAnnouncement = async (announcementId, announcementData) => {
-  try {
-    const response = await api.put(`/teacher/announcements/${announcementId}`, announcementData);
-    return response;
-  } catch (error) {
-    console.error('Error updating announcement:', error);
-    throw error;
-  }
-};
-
-export const deleteAnnouncement = async (announcementId) => {
-  try {
-    const response = await api.delete(`/teacher/announcements/${announcementId}`);
-    return response;
-  } catch (error) {
-    console.error('Error deleting announcement:', error);
-    throw error;
-  }
-};
 
 // ========================================
 // MESSAGES

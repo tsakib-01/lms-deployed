@@ -4,8 +4,8 @@ const Assignment = require('../models/Assignment');
 const Submission = require('../models/Submission');
 const Quiz = require('../models/Quiz');
 const User = require('../models/User');
-const Announcement = require('../models/Announcement');
 const Message = require('../models/Message');
+
 const Certificate = require('../models/Certificate');
 const Transaction = require('../models/Transaction');
 
@@ -484,6 +484,27 @@ exports.updateAssignment = async (req, res) => {
     }
 
     Object.assign(assignment, req.body);
+
+    // Handle file attachments if new ones are uploaded
+    if (req.files && req.files.length > 0) {
+      const newAttachments = req.files.map(file => file.path || `/uploads/assignments/${file.filename}`);
+      let keepAttachments = [];
+      if (req.body.existingAttachments) {
+        try {
+          keepAttachments = JSON.parse(req.body.existingAttachments);
+        } catch (e) {
+          keepAttachments = [];
+        }
+      } else {
+        keepAttachments = assignment.attachments || [];
+      }
+      assignment.attachments = [...keepAttachments, ...newAttachments];
+    } else if (req.body.existingAttachments) {
+      try {
+        assignment.attachments = JSON.parse(req.body.existingAttachments);
+      } catch (e) {}
+    }
+
     await assignment.save();
 
     res.json({ success: true, assignment });
@@ -782,99 +803,7 @@ exports.getStudentProgress = async (req, res) => {
   }
 };
 
-// ========================================
-// ANNOUNCEMENTS / NOTICES
-// ========================================
 
-exports.getAnnouncements = async (req, res) => {
-  try {
-    const courses = await Course.find({ instructor: req.user._id }).select('_id');
-    const courseIds = courses.map(c => c._id);
-
-    const announcements = await Announcement.find({ 
-      course: { $in: courseIds } 
-    })
-      .populate('course', 'title')
-      .sort('-isPinned -createdAt');
-
-    res.json({ success: true, announcements });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-exports.createAnnouncement = async (req, res) => {
-  try {
-    const { title, content, course, importance, isPinned, attachments } = req.body;
-
-    const courseDoc = await Course.findOne({
-      _id: course,
-      instructor: req.user._id
-    });
-
-    if (!courseDoc) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    const announcement = await Announcement.create({
-      title,
-      content,
-      course,
-      teacher: req.user._id,
-      importance: importance || 'normal',
-      isPinned: isPinned || false,
-      attachments: attachments || []
-    });
-
-    await announcement.populate('course', 'title');
-
-    res.status(201).json({ success: true, announcement });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-exports.updateAnnouncement = async (req, res) => {
-  try {
-    const announcement = await Announcement.findById(req.params.id);
-
-    if (!announcement) {
-      return res.status(404).json({ message: 'Announcement not found' });
-    }
-
-    if (announcement.teacher.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    Object.assign(announcement, req.body);
-    await announcement.save();
-    await announcement.populate('course', 'title');
-
-    res.json({ success: true, announcement });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
-
-exports.deleteAnnouncement = async (req, res) => {
-  try {
-    const announcement = await Announcement.findById(req.params.id);
-
-    if (!announcement) {
-      return res.status(404).json({ message: 'Announcement not found' });
-    }
-
-    if (announcement.teacher.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    await announcement.deleteOne();
-
-    res.json({ success: true, message: 'Announcement deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-};
 
 // ========================================
 // MESSAGES / Q&A

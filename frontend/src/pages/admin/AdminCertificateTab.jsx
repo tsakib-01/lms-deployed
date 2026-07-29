@@ -10,7 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // ── Safe ObjectId comparison ──────────────────────────────────────────────────
 const idEq = (a, b) => a?.toString() === b?.toString();

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Upload, X, ImagePlus } from 'lucide-react';
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // ── Drag handle icon ──────────────────────────────────────────────────────────
 const DragHandle = () => (
@@ -126,11 +126,16 @@ const LessonModal = ({ lesson, courseId, onClose, onSaved }) => {
 };
 
 // ── Assignment Modal ──────────────────────────────────────────────────────────
-const AssignmentModal = ({ courseId, onClose, onSaved }) => {
+const AssignmentModal = ({ assignment, courseId, onClose, onSaved }) => {
+  const isEditing = !!assignment;
   const [form, setForm] = useState({
-    title: '', description: '', deadline: '', maxGrade: 100
+    title: assignment?.title || '',
+    description: assignment?.description || '',
+    deadline: assignment?.deadline ? new Date(assignment.deadline).toISOString().substring(0, 16) : '',
+    maxGrade: assignment?.maxGrade || 100
   });
   const [files, setFiles] = useState([]);
+  const [existingAttachments, setExistingAttachments] = useState(assignment?.attachments || []);
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -144,10 +149,19 @@ const AssignmentModal = ({ courseId, onClose, onSaved }) => {
       fd.append('course', courseId);
       fd.append('deadline', form.deadline);
       fd.append('maxGrade', form.maxGrade);
+      
+      if (isEditing) {
+        fd.append('existingAttachments', JSON.stringify(existingAttachments));
+      }
       files.forEach(f => fd.append('attachments', f));
 
-      const res = await fetch(`${API}/api/teacher/assignments`, {
-        method: 'POST',
+      const url = isEditing
+        ? `${API}/api/teacher/assignments/${assignment._id}`
+        : `${API}/api/teacher/assignments`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
       });
@@ -156,12 +170,16 @@ const AssignmentModal = ({ courseId, onClose, onSaved }) => {
     } finally { setLoading(false); }
   };
 
+  const removeExistingAttachment = (index) => {
+    setExistingAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-orange-500 to-red-500 text-white p-6 rounded-t-2xl">
-          <h2 className="text-xl font-bold">Add Assignment</h2>
+          <h2 className="text-xl font-bold">{isEditing ? 'Edit Assignment' : 'Add Assignment'}</h2>
           <p className="text-orange-100 text-sm mt-1">This assignment will appear in the curriculum</p>
         </div>
         <div className="p-6 space-y-4">
@@ -189,17 +207,40 @@ const AssignmentModal = ({ courseId, onClose, onSaved }) => {
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-orange-400 outline-none" />
             </div>
           </div>
+          
+          {/* File Attachments */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Attachments (optional)</label>
+            {isEditing && existingAttachments.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-gray-600 mb-1">Current attachments:</p>
+                <div className="space-y-1.5">
+                  {existingAttachments.map((attachment, index) => {
+                    const filename = attachment.split('/').pop();
+                    return (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-xl border border-gray-200">
+                        <span className="text-xs text-gray-700 truncate flex-1">📎 {filename}</span>
+                        <button type="button" onClick={() => removeExistingAttachment(index)}
+                          className="text-red-500 hover:text-red-750 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-red-50 transition">
+                          ✕
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Upload Attachments</label>
             <input type="file" multiple accept=".pdf,.doc,.docx,.jpg,.png"
               onChange={e => setFiles(Array.from(e.target.files))}
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm" />
-            {files.length > 0 && <p className="text-xs text-gray-400 mt-1">{files.length} file(s) selected</p>}
+            {files.length > 0 && <p className="text-xs text-gray-400 mt-1">{files.length} new file(s) selected</p>}
           </div>
+
           <div className="flex gap-3 pt-2">
             <button onClick={handleSave} disabled={loading}
               className="flex-1 py-3 bg-orange-500 text-white rounded-xl font-semibold hover:bg-orange-600 transition disabled:opacity-50">
-              {loading ? 'Creating...' : 'Add Assignment'}
+              {loading ? 'Saving...' : isEditing ? 'Update Assignment' : 'Add Assignment'}
             </button>
             <button onClick={onClose}
               className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition">
@@ -213,13 +254,17 @@ const AssignmentModal = ({ courseId, onClose, onSaved }) => {
 };
 
 // ── Quiz Modal ────────────────────────────────────────────────────────────────
-const QuizModal = ({ courseId, onClose, onSaved }) => {
+const QuizModal = ({ quiz, courseId, onClose, onSaved }) => {
+  const isEditing = !!quiz;
   const [form, setForm] = useState({
-    title: '', description: '', duration: 30, passingScore: 70,
+    title: quiz?.title || '',
+    description: quiz?.description || '',
+    duration: quiz?.duration || 30,
+    passingScore: quiz?.passingScore || 70,
   });
-  const [questions, setQuestions] = useState([
-    { question: '', options: ['', '', '', ''], correctAnswer: 0 }
-  ]);
+  const [questions, setQuestions] = useState(
+    quiz?.questions || [{ question: '', options: ['', '', '', ''], correctAnswer: 0 }]
+  );
   const [loading, setLoading] = useState(false);
 
   const addQuestion = () => setQuestions([...questions, { question: '', options: ['', '', '', ''], correctAnswer: 0 }]);
@@ -244,8 +289,12 @@ const QuizModal = ({ courseId, onClose, onSaved }) => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`${API}/api/teacher/quizzes`, {
-        method: 'POST',
+      const url = isEditing
+        ? `${API}/api/teacher/quizzes/${quiz._id}`
+        : `${API}/api/teacher/quizzes`;
+      const method = isEditing ? 'PUT' : 'POST';
+      const res = await fetch(url, {
+        method,
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, course: courseId, questions }),
       });
@@ -259,7 +308,7 @@ const QuizModal = ({ courseId, onClose, onSaved }) => {
       <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}>
         <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-6 rounded-t-2xl">
-          <h2 className="text-xl font-bold">Add Quiz</h2>
+          <h2 className="text-xl font-bold">{isEditing ? 'Edit Quiz' : 'Add Quiz'}</h2>
           <p className="text-purple-200 text-sm mt-1">Students must complete this before continuing</p>
         </div>
         <div className="p-6 space-y-5">
@@ -336,13 +385,186 @@ const QuizModal = ({ courseId, onClose, onSaved }) => {
           <div className="flex gap-3 pt-2">
             <button onClick={handleSave} disabled={loading}
               className="flex-1 py-3 bg-purple-600 text-white rounded-xl font-semibold hover:bg-purple-700 transition disabled:opacity-50">
-              {loading ? 'Creating...' : 'Add Quiz'}
+              {loading ? 'Saving...' : isEditing ? 'Update Quiz' : 'Add Quiz'}
             </button>
             <button onClick={onClose}
               className="flex-1 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition">
               Cancel
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── Preview Modal ─────────────────────────────────────────────────────────────
+const PreviewModal = ({ type, data, onClose }) => {
+  if (!data) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}>
+        <div className="bg-gradient-to-r from-slate-700 to-slate-900 text-white p-6 rounded-t-2xl flex justify-between items-center">
+          <div>
+            <span className="text-xs uppercase tracking-wider font-bold bg-white/20 px-2.5 py-1 rounded-full mr-2">
+              Preview Mode
+            </span>
+            <h2 className="text-xl font-bold inline-block">{data.title || 'Untitled'}</h2>
+          </div>
+          <button onClick={onClose} className="text-white hover:text-gray-200 text-lg font-bold">
+            ✕
+          </button>
+        </div>
+        <div className="p-6 space-y-6">
+          {type === 'lesson' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Lesson Description</h3>
+                <p className="text-slate-700 mt-1 text-sm whitespace-pre-wrap">{data.description || 'No description provided.'}</p>
+              </div>
+              
+              {data.type === 'video' && data.videoUrl && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Video</h3>
+                  <div className="aspect-video bg-slate-950 rounded-xl overflow-hidden flex items-center justify-center relative">
+                    {data.videoUrl.includes('youtube.com') || data.videoUrl.includes('youtu.be') ? (
+                      <iframe
+                        className="w-full h-full"
+                        src={data.videoUrl.replace('watch?v=', 'embed/').split('&')[0]}
+                        title={data.title}
+                        allowFullScreen
+                      />
+                    ) : (
+                      <div className="text-center p-4">
+                        <span className="text-4xl">📺</span>
+                        <p className="text-slate-400 text-xs mt-2">External Video Link:</p>
+                        <a href={data.videoUrl} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline text-sm break-all font-medium">
+                          {data.videoUrl}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {data.type === 'text' && data.content && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Article Content</h3>
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-slate-800 text-sm whitespace-pre-wrap font-sans">
+                    {data.content}
+                  </div>
+                </div>
+              )}
+
+              {data.type === 'pdf' && (
+                <div className="bg-rose-50 p-4 rounded-xl border border-rose-100 flex items-center gap-3">
+                  <span className="text-2xl">📑</span>
+                  <div>
+                    <h4 className="font-semibold text-slate-800 text-sm">PDF Document</h4>
+                    <p className="text-xs text-slate-500">This lesson contains a PDF attachment for reading.</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-4 text-xs text-slate-500 pt-2 border-t">
+                {data.duration && <span>⏱ Duration: {data.duration}</span>}
+                <span>👁 {data.isPreview ? 'Public Preview Available' : 'Enrolled Students Only'}</span>
+              </div>
+            </div>
+          )}
+
+          {type === 'assignment' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Instructions</h3>
+                <p className="text-slate-700 mt-1 text-sm whitespace-pre-wrap">{data.description || 'No description provided.'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
+                <div>
+                  <span className="text-slate-500 text-xs block">Max Grade</span>
+                  <span className="font-bold text-slate-800">{data.maxGrade || 100} points</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-xs block">Due Date</span>
+                  <span className="font-bold text-slate-800">
+                    {data.deadline ? new Date(data.deadline).toLocaleString() : 'N/A'}
+                  </span>
+                </div>
+              </div>
+
+              {data.attachments && data.attachments.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2">Attachments</h3>
+                  <div className="space-y-2">
+                    {data.attachments.map((url, i) => {
+                      const filename = url.split('/').pop() || `Attachment ${i + 1}`;
+                      return (
+                        <a key={i} href={url.startsWith('http') ? url : `${API}${url}`} target="_blank" rel="noopener noreferrer" 
+                          className="flex items-center gap-2 p-2.5 bg-orange-50/50 hover:bg-orange-50 border border-orange-100 rounded-lg text-xs font-medium text-orange-700 transition">
+                          📎 <span className="truncate flex-1">{filename}</span>
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {type === 'quiz' && (
+            <div className="space-y-5">
+              {data.description && (
+                <div>
+                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide">Quiz Description</h3>
+                  <p className="text-slate-700 mt-1 text-sm">{data.description}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100 text-sm">
+                <div>
+                  <span className="text-slate-500 text-xs block">Duration</span>
+                  <span className="font-bold text-slate-800">{data.duration || 0} minutes</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-xs block">Passing Score</span>
+                  <span className="font-bold text-slate-800">{data.passingScore || 70}%</span>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wide border-b pb-1">
+                  Questions ({data.questions?.length || 0})
+                </h3>
+                
+                {data.questions?.map((q, qi) => (
+                  <div key={qi} className="p-4 border border-slate-100 rounded-xl bg-slate-50/30 space-y-2.5">
+                    <p className="text-sm font-semibold text-slate-800">
+                      {qi + 1}. {q.question}
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      {q.options?.map((opt, oi) => (
+                        <div key={oi} className={`p-2.5 rounded-lg border ${
+                          q.correctAnswer === oi 
+                            ? 'border-green-300 bg-green-50 text-green-800 font-medium' 
+                            : 'border-slate-100 bg-white text-slate-600'
+                        }`}>
+                          {opt} {q.correctAnswer === oi && '✓'}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="p-4 border-t bg-slate-50 rounded-b-2xl flex justify-end">
+          <button onClick={onClose} className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-semibold transition">
+            Close Preview
+          </button>
         </div>
       </div>
     </div>
@@ -364,6 +586,9 @@ const EditCourse = () => {
   const [activeTab, setActiveTab] = useState('curriculum');
   const [modal, setModal] = useState(null);
   const [editingLesson, setEditingLesson] = useState(null);
+  const [editingAssignment, setEditingAssignment] = useState(null);
+  const [editingQuiz, setEditingQuiz] = useState(null);
+  const [previewItem, setPreviewItem] = useState(null);
   const [dragIndex, setDragIndex] = useState(null);
   const [courseDetails, setCourseDetails] = useState({
     title: '', description: '', category: '', level: 'Beginner', price: 0
@@ -591,6 +816,36 @@ const saveCourseDetails = async () => {
     if (res.ok) {
       setCurriculum(prev => prev.filter(item => !(item.itemType === 'lesson' && item.itemId?.toString() === lessonId?.toString())));
       fetchAll();
+    }
+  };
+
+  const deleteAssignment = async (assignmentId) => {
+    if (!window.confirm('Delete this assignment permanently?')) return;
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API}/api/teacher/assignments/${assignmentId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      setCurriculum(prev => prev.filter(item => !(item.itemType === 'assignment' && item.itemId?.toString() === assignmentId?.toString())));
+      fetchAll();
+    } else {
+      const e = await res.json();
+      alert(e.message || 'Failed to delete assignment');
+    }
+  };
+
+  const deleteQuiz = async (quizId) => {
+    if (!window.confirm('Delete this quiz permanently?')) return;
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API}/api/teacher/quizzes/${quizId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` }
+    });
+    if (res.ok) {
+      setCurriculum(prev => prev.filter(item => !(item.itemType === 'quiz' && item.itemId?.toString() === quizId?.toString())));
+      fetchAll();
+    } else {
+      const e = await res.json();
+      alert(e.message || 'Failed to delete quiz');
     }
   };
 
@@ -828,8 +1083,24 @@ const saveCourseDetails = async () => {
                               )}
                             </div>
                             <div className="flex items-center gap-1 flex-shrink-0">
+                              <button onClick={() => setPreviewItem({ type: item.itemType, data })}
+                                className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg transition text-xs font-semibold">
+                                Preview
+                              </button>
                               {item.itemType === 'lesson' && (
                                 <button onClick={() => { setEditingLesson(data); setModal('editLesson'); }}
+                                  className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition text-xs font-semibold">
+                                  Edit
+                                </button>
+                              )}
+                              {item.itemType === 'assignment' && (
+                                <button onClick={() => { setEditingAssignment(data); setModal('editAssignment'); }}
+                                  className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition text-xs font-semibold">
+                                  Edit
+                                </button>
+                              )}
+                              {item.itemType === 'quiz' && (
+                                <button onClick={() => { setEditingQuiz(data); setModal('editQuiz'); }}
                                   className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg transition text-xs font-semibold">
                                   Edit
                                 </button>
@@ -907,10 +1178,16 @@ const saveCourseDetails = async () => {
                     {unaddedAssignments.map(a => (
                       <div key={a._id} className="flex items-center justify-between p-3 bg-orange-50 rounded-xl">
                         <span className="text-sm font-medium text-gray-700 truncate flex-1">{a.title}</span>
-                        <button onClick={() => addToCurriculum('assignment', a)}
-                          className="text-xs bg-orange-500 text-white px-2.5 py-1 rounded-lg hover:bg-orange-600 transition flex-shrink-0 ml-2">
-                          + Add
-                        </button>
+                        <div className="flex gap-1 flex-shrink-0 ml-2">
+                          <button onClick={() => addToCurriculum('assignment', a)}
+                            className="text-xs bg-orange-500 text-white px-2.5 py-1 rounded-lg hover:bg-orange-600 transition">
+                            + Add
+                          </button>
+                          <button onClick={() => deleteAssignment(a._id)}
+                            className="text-xs bg-red-50 text-red-500 px-2.5 py-1 rounded-lg hover:bg-red-100 transition">
+                            Del
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -924,10 +1201,16 @@ const saveCourseDetails = async () => {
                     {unaddedQuizzes.map(q => (
                       <div key={q._id} className="flex items-center justify-between p-3 bg-purple-50 rounded-xl">
                         <span className="text-sm font-medium text-gray-700 truncate flex-1">{q.title}</span>
-                        <button onClick={() => addToCurriculum('quiz', q)}
-                          className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-lg hover:bg-purple-700 transition flex-shrink-0 ml-2">
-                          + Add
-                        </button>
+                        <div className="flex gap-1 flex-shrink-0 ml-2">
+                          <button onClick={() => addToCurriculum('quiz', q)}
+                            className="text-xs bg-purple-600 text-white px-2.5 py-1 rounded-lg hover:bg-purple-700 transition">
+                            + Add
+                          </button>
+                          <button onClick={() => deleteQuiz(q._id)}
+                            className="text-xs bg-red-50 text-red-500 px-2.5 py-1 rounded-lg hover:bg-red-100 transition">
+                            Del
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -972,9 +1255,23 @@ const saveCourseDetails = async () => {
         <AssignmentModal courseId={id} onClose={() => setModal(null)}
           onSaved={() => { fetchAll(); setModal(null); }} />
       )}
+      {modal === 'editAssignment' && editingAssignment && (
+        <AssignmentModal assignment={editingAssignment} courseId={id}
+          onClose={() => { setModal(null); setEditingAssignment(null); }}
+          onSaved={() => { fetchAll(); setModal(null); setEditingAssignment(null); }} />
+      )}
       {modal === 'quiz' && (
         <QuizModal courseId={id} onClose={() => setModal(null)}
           onSaved={() => { fetchAll(); setModal(null); }} />
+      )}
+      {modal === 'editQuiz' && editingQuiz && (
+        <QuizModal quiz={editingQuiz} courseId={id}
+          onClose={() => { setModal(null); setEditingQuiz(null); }}
+          onSaved={() => { fetchAll(); setModal(null); setEditingQuiz(null); }} />
+      )}
+      {previewItem && (
+        <PreviewModal type={previewItem.type} data={previewItem.data}
+          onClose={() => setPreviewItem(null)} />
       )}
     </div>
   );

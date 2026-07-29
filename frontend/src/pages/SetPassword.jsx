@@ -45,7 +45,7 @@ const SetPassword = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/auth/set-password/${token}`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/auth/set-password/${token}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

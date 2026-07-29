@@ -29,12 +29,13 @@ const uploadLogo = multer({
 });
 
 // ── Helper: always returns the single settings document ───────────────────────
-const getSettings = () =>
-  SiteSettings.findOneAndUpdate(
-    {},
-    {},
-    { upsert: true, new: true, setDefaultsOnInsert: true }
-  );
+const getSettings = async () => {
+  let settings = await SiteSettings.findOne();
+  if (!settings) {
+    settings = await SiteSettings.create({});
+  }
+  return settings;
+};
 
 // ── Default page content (used as fallback when DB has none) ──────────────────
 const defaultPageContent = {
@@ -219,6 +220,20 @@ router.delete('/messages/:id', async (req, res) => {
   }
 });
 
+// ── Helper: deep merge defaults with stored content ────────────────────────
+const mergeDeep = (target, source) => {
+  if (!source) return target;
+  const output = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+      output[key] = mergeDeep(target[key] || {}, source[key]);
+    } else {
+      output[key] = source[key];
+    }
+  }
+  return output;
+};
+
 // ════════════════════════════════════════════════════════════════════════════════
 // PAGE CONTENT ROUTES
 // ════════════════════════════════════════════════════════════════════════════════
@@ -229,9 +244,9 @@ router.get('/pages', async (_req, res) => {
     const settings = await getSettings();
     // Merge DB content over defaults so missing fields always have a value
     const data = {
-      home:    { ...defaultPageContent.home,    ...(settings.pageContent?.home    || {}) },
-      about:   { ...defaultPageContent.about,   ...(settings.pageContent?.about   || {}) },
-      contact: { ...defaultPageContent.contact, ...(settings.pageContent?.contact || {}) },
+      home:    mergeDeep(defaultPageContent.home,    settings.pageContent?.home),
+      about:   mergeDeep(defaultPageContent.about,   settings.pageContent?.about),
+      contact: mergeDeep(defaultPageContent.contact, settings.pageContent?.contact),
     };
     res.json({ success: true, data });
   } catch (err) {
@@ -247,7 +262,7 @@ router.get('/pages/:page', async (req, res) => {
       return res.status(404).json({ success: false, message: 'Page not found' });
     }
     const settings = await getSettings();
-    const data = { ...defaultPageContent[page], ...(settings.pageContent?.[page] || {}) };
+    const data = mergeDeep(defaultPageContent[page], settings.pageContent?.[page]);
     res.json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -261,18 +276,19 @@ router.put('/pages/:page', async (req, res) => {
     if (!defaultPageContent[page]) {
       return res.status(404).json({ success: false, message: 'Page not found' });
     }
-    await SiteSettings.findOneAndUpdate(
+    const updated = await SiteSettings.findOneAndUpdate(
       {},
       { $set: { [`pageContent.${page}`]: req.body } },
-      { upsert: true, new: true }
+      { upsert: true, new: true, setDefaultsOnInsert: true, strict: false }
     );
     console.log(`✅ ${page} page content saved to MongoDB`);
     res.json({
       success: true,
       message: `${page.charAt(0).toUpperCase() + page.slice(1)} page updated successfully`,
-      data:    req.body
+      data:    updated.pageContent?.[page] || req.body
     });
   } catch (err) {
+    console.error(`Error saving ${req.params.page} page content:`, err);
     res.status(500).json({ success: false, message: err.message });
   }
 });

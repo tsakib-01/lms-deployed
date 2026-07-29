@@ -3,7 +3,7 @@ import axios from 'axios';
 // For React apps, use import.meta.env (Vite) or process.env (Create React App)
 // This handles both cases safely
 const getApiUrl = () => {
-  const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL)
+  const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_BACKEND_URL)
     || (typeof process !== 'undefined' && process.env && process.env.REACT_APP_API_URL)
     || 'http://localhost:5000';
   return base.endsWith('/api') ? base : `${base}/api`;

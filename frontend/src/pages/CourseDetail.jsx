@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // ── ID comparison helper (handles ObjectId objects vs strings) ─────────────
 const idEq = (a, b) => a?.toString() === b?.toString();

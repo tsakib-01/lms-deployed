@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API = import.meta.env.VITE_BACKEND_URL;
 
 // ── Default content (used as fallback if API is unavailable) ─────────────────
 const DEFAULT_HOME = {
@@ -64,7 +64,7 @@ const Home = () => {
     // Logo
     fetch(`${API}/api/content/logo`)
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.logoPath) setLogoPath(d.logoPath); })
+      .then(d => { if (d?.success && d?.logoUrl) setLogoPath(d.logoUrl); })
       .catch(() => {});
   }, []);
 
@@ -86,11 +86,7 @@ const Home = () => {
             </div>
 
             {/* Logo (if set by admin) */}
-            {logoPath && (
-              <div className="mb-4">
-                <img src={`${API}${logoPath}`} alt="Site logo" className="h-12 object-contain" />
-              </div>
-            )}
+          
 
             <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
               {hero.titleLine1}<br />

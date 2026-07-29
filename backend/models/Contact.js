@@ -33,6 +33,22 @@ const contactSchema = new mongoose.Schema({
     type: String,
     enum: ['unread', 'read', 'replied'],
     default: 'unread'
+  },
+  adminReply: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  repliedAt: {
+    type: Date
+  },
+  studentReply: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  studentRepliedAt: {
+    type: Date
   }
 }, {
   timestamps: true // Automatically adds createdAt and updatedAt

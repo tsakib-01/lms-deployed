@@ -1,19 +1,27 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const Contact = () => {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
+    name: user?.name || '',
+    email: user?.email || '',
     subject: '',
     message: ''
   });
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Keep name/email in sync when user logs in
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({ ...prev, name: user.name || '', email: user.email || '' }));
+    }
+  }, [user]);
 
   // Dynamic contact content from backend
   const [contactContent, setContactContent] = useState({
@@ -36,21 +44,16 @@ const Contact = () => {
     ]
   });
 
-  // Fetch contact page content on mount
   useEffect(() => {
     const fetchContactContent = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/content/pages/contact`);
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/content/pages/contact`);
         const data = await response.json();
-        
-        if (data.success) {
-          setContactContent(data.data);
-        }
+        if (data.success) setContactContent(data.data);
       } catch (err) {
         console.error('Failed to fetch contact content:', err);
       }
     };
-
     fetchContactContent();
   }, []);
 
@@ -58,35 +61,23 @@ const Contact = () => {
     e.preventDefault();
     setIsSubmitting(true);
     setError('');
-
     try {
-      // Make the POST request to your backend
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/content/messages`, {
+      // Always use the account email — never the editable field — to ensure inbox lookup works
+      const payload = { ...formData, email: user.email };
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/contact/message`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-
       const data = await response.json();
-
       if (data.success) {
-        // Success!
         setSubmitted(true);
-        setFormData({ name: '', email: '', subject: '', message: '' }); // Reset form
-        
-        // Reset success message after 3 seconds
-        setTimeout(() => {
-          setSubmitted(false);
-        }, 3000);
+        setFormData(prev => ({ ...prev, subject: '', message: '' }));
+        setTimeout(() => setSubmitted(false), 6000);
       } else {
-        // Backend returned an error
         setError(data.message || 'Failed to send message.');
       }
-
     } catch (err) {
-      // Network error (Server not running, wrong URL, etc.)
       console.error(err);
       setError('Server error. Please try again later.');
     } finally {
@@ -95,10 +86,7 @@ const Contact = () => {
   };
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
   return (
@@ -116,108 +104,124 @@ const Contact = () => {
       {/* Contact Section */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid lg:grid-cols-2 gap-12">
-          {/* Contact Form */}
+
+          {/* Contact Form / Login Gate */}
           <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
             <h2 className="text-3xl font-bold text-gray-900 mb-6">Send us a Message</h2>
-            
-            {submitted && (
-              <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
-                <p className="font-semibold">Thank you for your message!</p>
-                <p className="text-sm">We'll get back to you soon.</p>
-              </div>
-            )}
 
-            {isAdmin && (
-              <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3.5 rounded-lg mb-6 text-sm font-medium flex items-center gap-2">
-                <span>🛡️</span>
-                <span>You are logged in as an <strong>Administrator</strong>. Contact forms are disabled for administrative accounts.</span>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  disabled={isAdmin}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address *
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled={isAdmin}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subject *
-                </label>
-                <input
-                  type="text"
-                  name="subject"
-                  value={formData.subject}
-                  onChange={handleChange}
-                  disabled={isAdmin}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-400"
-                  placeholder="How can we help?"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Message *
-                </label>
-                <textarea
-                  name="message"
-                  value={formData.message}
-                  onChange={handleChange}
-                  disabled={isAdmin}
-                  rows="6"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none disabled:bg-gray-50 disabled:text-gray-400"
-                  placeholder="Tell us more about your inquiry..."
-                  required
-                ></textarea>
-              </div>
-
-              {/* Show Error if any */}
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg mb-4">
-                  {error}
+            {!user ? (
+              /* ── Not logged in ── */
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-orange-100 rounded-2xl mb-5">
+                  <span className="text-4xl">🔒</span>
                 </div>
-              )}
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Login Required</h3>
+                <p className="text-gray-500 text-sm mb-6 max-w-xs mx-auto">
+                  You need to be logged in as a student to send a message to the admin.
+                </p>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="px-8 py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-semibold rounded-xl hover:from-orange-600 hover:to-pink-600 transition shadow-lg"
+                >
+                  Login to Continue →
+                </button>
+                <p className="text-xs text-gray-400 mt-4">
+                  Don't have an account?{' '}
+                  <button onClick={() => navigate('/register')} className="text-orange-500 font-semibold hover:underline">
+                    Register here
+                  </button>
+                </p>
+              </div>
+            ) : (
+              /* ── Logged in ── */
+              <>
+                {submitted && (
+                  <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg mb-6">
+                    <p className="font-semibold">✅ Message sent successfully!</p>
+                    <p className="text-sm mt-1">
+                      Check your <strong>Inbox</strong> in the{' '}
+                      <button onClick={() => navigate('/student/dashboard')} className="underline font-semibold">
+                        Student Dashboard
+                      </button>{' '}
+                      to see the admin's reply.
+                    </p>
+                  </div>
+                )}
 
-              <button
-                type="submit"
-                disabled={isSubmitting || isAdmin}
-                className={`w-full text-white py-4 rounded-lg font-semibold transition shadow-lg ${
-                  isSubmitting || isAdmin
-                    ? 'bg-gray-400 cursor-not-allowed shadow-none' 
-                    : 'bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600'
-                }`}
-              >
-                {isSubmitting ? 'Sending...' : isAdmin ? 'Admins cannot submit queries' : 'Send Message'}
-              </button>
-            </form>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Your Name *</label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                        placeholder="John Doe"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Email <span className="text-xs text-gray-400 font-normal ml-1">🔒 account email</span>
+                      </label>
+                      <input
+                        type="email"
+                        name="email"
+                        value={user.email}
+                        readOnly
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Subject *</label>
+                    <input
+                      type="text"
+                      name="subject"
+                      value={formData.subject}
+                      onChange={handleChange}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      placeholder="How can we help?"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
+                    <textarea
+                      name="message"
+                      value={formData.message}
+                      onChange={handleChange}
+                      rows="5"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                      placeholder="Tell us more about your inquiry..."
+                      required
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                      {error}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className={`w-full text-white py-4 rounded-lg font-semibold transition shadow-lg ${
+                      isSubmitting
+                        ? 'bg-gray-400 cursor-not-allowed shadow-none'
+                        : 'bg-gradient-to-r from-orange-500 to-pink-500 hover:from-orange-600 hover:to-pink-600'
+                    }`}
+                  >
+                    {isSubmitting ? 'Sending...' : 'Send Message'}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
 
           {/* Contact Information */}
@@ -229,7 +233,6 @@ const Contact = () => {
               </p>
             </div>
 
-            {/* Contact Cards */}
             <div className="space-y-6">
               <div className="flex items-start space-x-4 p-6 bg-orange-50 rounded-xl hover:bg-orange-100 transition">
                 <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -271,29 +274,18 @@ const Contact = () => {
                 <div>
                   <h3 className="text-lg font-bold text-gray-900 mb-1">Live Chat</h3>
                   <p className="text-gray-600">{contactContent.contactInfo.liveChatAvailability}</p>
-                  <button className="text-green-600 hover:text-green-700 font-semibold mt-1">
-                    Start Chat →
-                  </button>
+                  <button className="text-green-600 hover:text-green-700 font-semibold mt-1">Start Chat →</button>
                 </div>
               </div>
             </div>
 
-            {/* Social Media */}
             <div className="pt-8 border-t border-gray-200">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Follow Us</h3>
               <div className="flex space-x-4">
-                <a href="#" className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center text-white hover:bg-gray-700 transition">
-                  <span className="text-xl">𝕏</span>
-                </a>
-                <a href="#" className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white hover:bg-blue-700 transition">
-                  <span className="text-xl">f</span>
-                </a>
-                <a href="#" className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white hover:bg-blue-600 transition">
-                  <span className="text-xl">in</span>
-                </a>
-                <a href="#" className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white hover:from-purple-600 hover:to-pink-600 transition">
-                  <span className="text-xl">IG</span>
-                </a>
+                <a href="#" className="w-12 h-12 bg-gray-800 rounded-lg flex items-center justify-center text-white hover:bg-gray-700 transition"><span className="text-xl">𝕏</span></a>
+                <a href="#" className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white hover:bg-blue-700 transition"><span className="text-xl">f</span></a>
+                <a href="#" className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white hover:bg-blue-600 transition"><span className="text-xl">in</span></a>
+                <a href="#" className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white hover:from-purple-600 hover:to-pink-600 transition"><span className="text-xl">IG</span></a>
               </div>
             </div>
           </div>
@@ -307,7 +299,6 @@ const Contact = () => {
             <h2 className="text-4xl font-bold text-gray-900 mb-4">Frequently Asked Questions</h2>
             <p className="text-gray-600 text-lg">Quick answers to common questions</p>
           </div>
-
           <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {contactContent.faqs.map((faq, idx) => (
               <div key={idx} className="bg-white p-6 rounded-xl shadow-sm">

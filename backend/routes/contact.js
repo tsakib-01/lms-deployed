@@ -56,6 +56,44 @@ router.post('/message', async (req, res) => {
   }
 });
 
+// GET - Get messages by email (for the sender to check replies)
+router.get('/my-messages', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide an email address'
+      });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    const messages = await Contact.find({ email: email.trim().toLowerCase() })
+      .sort({ createdAt: -1 })
+      .select('name email subject message status adminReply repliedAt studentReply studentRepliedAt createdAt');
+
+    res.json({
+      success: true,
+      count: messages.length,
+      data: messages
+    });
+  } catch (error) {
+    console.error('Error fetching messages by email:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
 // GET - Get all contact messages (for admin)
 router.get('/messages', async (req, res) => {
   try {
@@ -97,6 +135,93 @@ router.get('/messages/:id', async (req, res) => {
       success: false,
       message: 'Server error'
     });
+  }
+});
+
+// PUT - Admin reply to a contact message
+router.put('/messages/:id/reply', async (req, res) => {
+  try {
+    const { adminReply } = req.body;
+
+    if (!adminReply || !adminReply.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a reply message'
+      });
+    }
+
+    const message = await Contact.findByIdAndUpdate(
+      req.params.id,
+      {
+        adminReply: adminReply.trim(),
+        repliedAt: new Date(),
+        status: 'replied'
+      },
+      { new: true }
+    );
+
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: 'Message not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Reply saved successfully',
+      data: message
+    });
+  } catch (error) {
+    console.error('Error saving reply:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+});
+
+// POST - Student reply back to admin's reply
+router.post('/messages/:id/student-reply', async (req, res) => {
+  try {
+    const { studentReply, email } = req.body;
+
+    if (!studentReply || !studentReply.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a reply message'
+      });
+    }
+
+    // Find the message and verify ownership by email
+    const existing = await Contact.findById(req.params.id);
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Message not found' });
+    }
+    if (email && existing.email !== email.toLowerCase().trim()) {
+      return res.status(403).json({ success: false, message: 'Unauthorized' });
+    }
+    if (!existing.adminReply) {
+      return res.status(400).json({ success: false, message: 'Admin has not replied yet' });
+    }
+
+    const message = await Contact.findByIdAndUpdate(
+      req.params.id,
+      {
+        studentReply: studentReply.trim(),
+        studentRepliedAt: new Date()
+      },
+      { new: true }
+    );
+
+    res.json({
+      success: true,
+      message: 'Your reply has been sent',
+      data: message
+    });
+  } catch (error) {
+    console.error('Error saving student reply:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

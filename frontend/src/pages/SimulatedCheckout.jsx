@@ -33,7 +33,7 @@ const SimulatedCheckout = () => {
     // Fetch course details
     const fetchCourse = async () => {
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/courses/${courseId}`);
+        const res = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/courses/${courseId}`);
         if (res.ok) {
           const data = await res.json();
           setCourse(data.course);
@@ -96,7 +96,7 @@ const SimulatedCheckout = () => {
     setSubmitting(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/payments/complete-simulated-payment`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/payments/complete-simulated-payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -74,13 +74,7 @@ router.get('/quizzes/:id/results', teacherController.getQuizResults);
 router.get('/students', teacherController.getEnrolledStudents);
 router.get('/students/:id/progress', teacherController.getStudentProgress);
 
-// ========================================
-// ANNOUNCEMENTS / NOTICES
-// ========================================
-router.get('/announcements', teacherController.getAnnouncements);
-router.post('/announcements', teacherController.createAnnouncement);
-router.put('/announcements/:id', teacherController.updateAnnouncement);
-router.delete('/announcements/:id', teacherController.deleteAnnouncement);
+
 
 // ========================================
 // MESSAGES / Q&A

@@ -90,9 +90,7 @@ const connectDB = async () => {
     throw new Error("MONGODB_URI is missing");
   }
   try {
-    const db = await mongoose.connect(process.env.MONGODB_URI, {
-      bufferCommands: false,
-    });
+    const db = await mongoose.connect(process.env.MONGODB_URI);
     console.log("✅ MongoDB connected");
 
     // Automatically seed default admin if not exists

@@ -859,99 +859,51 @@ const AssignmentModal = ({ assignment, onClose, onDeleted, onUpdated }) => {
 
                   Cancel
 
-                </button>
-
-              </div>
-
-            </div>
-
-          )}
-
-        </div>
-
-      </div>
-
-    </div>
-
-  );
-
-};
-
-
-
-// ── Settings Modal ────────────────────────────────────────────────────────────
-
-const SettingsModal = ({ user, onClose, onUpdated }) => {
-
-  const [name, setName] = useState(user?.name || '');
-
-  const [avatar, setAvatar] = useState(null);
-
-  const [preview, setPreview] = useState(user?.avatar ? getImageSrc(user.avatar) : null);
-
-  const [loading, setLoading] = useState(false);
-
-  const fileRef = useRef();
-
-  const token = localStorage.getItem('token');
-
-
-
-  const handleAvatarChange = async (e) => {
+         const handleAvatarChange = (e) => {
     const f = e.target.files[0];
     if (!f) return;
 
-    setAvatar(f);
-    setPreview(URL.createObjectURL(f));
-    setLoading(true);
-
-    try {
-      alert('📤 Uploading your picture...');
-      const fd = new FormData();
-      fd.append('name', name || user?.name || 'Student');
-      fd.append('avatar', f);
-
-      const res = await fetch(`${API}/api/users/me`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const existingUser = JSON.parse(localStorage.getItem('user') || '{}');
-        const mergedUser = { ...existingUser, ...data.user };
-        localStorage.setItem('user', JSON.stringify(mergedUser));
-        if (data.user?.avatar) setPreview(getImageSrc(data.user.avatar));
-        onUpdated(mergedUser);
-        alert('✅ Profile picture saved successfully!');
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(`❌ Upload Error (${res.status}): ${errData.message || errData.error || 'Failed to upload image'}`);
-      }
-    } catch (err) {
-      alert(`❌ Network error during upload: ${err.message}`);
-    } finally {
-      setLoading(false);
+    if (f.size > 3 * 1024 * 1024) {
+      alert('⚠️ File size is too large. Please select an image under 3MB.');
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result;
+      setAvatar(base64String);
+      setPreview(base64String);
+    };
+    reader.readAsDataURL(f);
   };
-
-
 
   const handleSave = async () => {
     if (!name.trim()) return alert('Name cannot be empty');
     setLoading(true);
 
     try {
-      const fd = new FormData();
-      fd.append('name', name);
-      if (avatar) fd.append('avatar', avatar);
+      let res;
+      if (typeof avatar === 'string' && avatar.startsWith('data:')) {
+        // Send directly as JSON Base64 string for 100% serverless guarantee
+        res = await fetch(`${API}/api/users/me`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({ name, avatar }),
+        });
+      } else {
+        const fd = new FormData();
+        fd.append('name', name);
+        if (avatar && typeof avatar !== 'string') fd.append('avatar', avatar);
 
-      const res = await fetch(`${API}/api/users/me`, {
-        method: 'PUT',
-        headers: { Authorization: `Bearer ${token}` },
-        body: fd,
-      });
+        res = await fetch(`${API}/api/users/me`, {
+          method: 'PUT',
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
+        });
+      }
 
       if (res.ok) {
         const data = await res.json();
@@ -960,15 +912,17 @@ const SettingsModal = ({ user, onClose, onUpdated }) => {
         localStorage.setItem('user', JSON.stringify(mergedUser));
         if (data.user?.avatar) setPreview(getImageSrc(data.user.avatar));
         onUpdated(mergedUser);
-        alert('✅ Profile picture updated successfully!');
+        alert('✅ Profile picture saved to database successfully!');
         onClose();
       } else {
-        const e = await res.json().catch(() => ({}));
-        alert(`❌ Error (${res.status}): ${e.message || e.error || 'Failed to update profile'}`);
+        const errData = await res.json().catch(() => ({}));
+        alert(`❌ Upload Error (${res.status}): ${errData.message || errData.error || 'Failed to update profile'}`);
       }
     } catch (err) {
       alert(`❌ Network error: ${err.message}`);
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   };
 
 

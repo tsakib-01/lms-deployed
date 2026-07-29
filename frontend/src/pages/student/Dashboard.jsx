@@ -912,59 +912,36 @@ const SettingsModal = ({ user, onClose, onUpdated }) => {
 
 
   const handleSave = async () => {
-
     if (!name.trim()) return alert('Name cannot be empty');
-
     setLoading(true);
 
     try {
-
       const fd = new FormData();
-
       fd.append('name', name);
-
       if (avatar) fd.append('avatar', avatar);
 
       const res = await fetch(`${API}/api/users/me`, {
-
         method: 'PUT',
-
         headers: { Authorization: `Bearer ${token}` },
-
         body: fd,
-
       });
 
       if (res.ok) {
-
         const data = await res.json();
-
         const existingUser = JSON.parse(localStorage.getItem('user') || '{}');
-
         const mergedUser = { ...existingUser, ...data.user };
-
         localStorage.setItem('user', JSON.stringify(mergedUser));
-
         if (data.user?.avatar) setPreview(getImageSrc(data.user.avatar));
-
         onUpdated(mergedUser);
-
+        alert('✅ Profile picture updated successfully!');
         onClose();
-
       } else {
-
-        const e = await res.json();
-
-        alert(e.message || 'Failed to update profile');
-
+        const e = await res.json().catch(() => ({}));
+        alert(`❌ Error (${res.status}): ${e.message || e.error || 'Failed to update profile'}`);
       }
-
     } catch (err) {
-
-      alert('Network error. Please try again.');
-
+      alert(`❌ Network error: ${err.message}`);
     } finally { setLoading(false); }
-
   };
 
 

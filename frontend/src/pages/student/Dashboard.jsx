@@ -868,8 +868,13 @@ const AssignmentModal = ({ assignment, onClose, onDeleted, onUpdated }) => {
       return;
     }
 
-    setAvatar(f); // Store raw File object for Cloudinary upload
-    setPreview(URL.createObjectURL(f)); // Instant preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const b64 = reader.result;
+      setAvatar(b64);
+      setPreview(b64);
+    };
+    reader.readAsDataURL(f);
   };
 
   const handleSave = async () => {

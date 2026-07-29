@@ -77,15 +77,22 @@ app.use("/uploads", (req, res, next) => {
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 /* ======================
-   MongoDB Connection
+   MongoDB Connection (Serverless Friendly)
 ====================== */
+let cachedDb = null;
+
 const connectDB = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
   if (!process.env.MONGODB_URI) {
     console.error("❌ MONGODB_URI is not defined in environment variables!");
-    return;
+    throw new Error("MONGODB_URI is missing");
   }
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    const db = await mongoose.connect(process.env.MONGODB_URI, {
+      bufferCommands: false,
+    });
     console.log("✅ MongoDB connected");
 
     // Automatically seed default admin if not exists
@@ -101,15 +108,25 @@ const connectDB = async () => {
         isActive: true
       });
       console.log(`✅ Default admin account created successfully (${adminEmail} / 777777)`);
-    } else {
-      console.log(`ℹ️ Admin account (${adminEmail}) already exists in the database`);
     }
+    return db;
   } catch (error) {
     console.error("❌ MongoDB connection error:", error.message);
+    throw error;
   }
 };
 
-connectDB();
+// Middleware to ensure DB is connected for every request on Vercel
+app.use(async (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    try {
+      await connectDB();
+    } catch (err) {
+      console.error("DB Middleware Error:", err.message);
+    }
+  }
+  next();
+});
 
 /* ======================
    Import Routes (after app is initialized)
@@ -135,6 +152,7 @@ app.get("/", (req, res) => {
 // Diagnostic route to check DB connection & Seeding on Vercel
 app.get("/api/db-debug", async (req, res) => {
   try {
+    await connectDB();
     const dbStatus = mongoose.connection.readyState;
     const states = ["disconnected", "connected", "connecting", "disconnecting"];
     
